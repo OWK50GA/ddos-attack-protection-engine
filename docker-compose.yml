@@ -42,8 +42,8 @@ services:
   detector:
     env_file: .env
     build:
-      context: ./detector
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: detector/Dockerfile
     restart: unless-stopped
     network_mode: host
     volumes:
