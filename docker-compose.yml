@@ -1,0 +1,60 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Named volumes
+# ---------------------------------------------------------------------------
+volumes:
+  HNG-nginx-logs:        # shared log volume — nginx writes, others read-only
+  detector-audit:        # audit log persists across container restarts
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+services:
+
+  # -------------------------------------------------------------------------
+  # Nginx — reverse proxy, writes JSON access logs to the shared volume
+  # -------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - HNG-nginx-logs:/var/log/nginx
+    depends_on:
+      - nextcloud
+
+  # -------------------------------------------------------------------------
+  # Nextcloud — do NOT modify this image
+  # -------------------------------------------------------------------------
+  nextcloud:
+    image: kefaslungu/hng-nextcloud
+    restart: unless-stopped
+    volumes:
+      - HNG-nginx-logs:/var/log/nginx:ro   # mounts volume read-only
+
+  # -------------------------------------------------------------------------
+  # Detector — the anomaly detection daemon
+  # -------------------------------------------------------------------------
+  detector:
+    env_file: .env
+    build:
+      context: ./detector
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - HNG-nginx-logs:/var/log/nginx:ro   # reads nginx logs, read-only
+      - ./config.yaml:/app/config.yaml:ro  # config bind-mount, read-only
+      - detector-audit:/var/log/detector   # audit log persistence
+    ports:
+      - "5000:5000"                        # dashboard port (matches config.yaml)
+    cap_add:
+      - NET_ADMIN                          # required for iptables commands
+    depends_on:
+      - nginx
+    environment:
+      - DETECTOR_CONFIG=/app/config.yaml

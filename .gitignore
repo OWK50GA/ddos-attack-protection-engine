@@ -1,0 +1,53 @@
+# Kiro IDE
+.kiro/
+
+# Environment / secrets
+.env
+*.env
+
+# Python bytecode
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# pytest / test artifacts
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Hypothesis database
+.hypothesis/
+
+# Logs (runtime — not the code that writes them)
+*.log
+audit.log
+
+# Docker
+.dockerignore
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

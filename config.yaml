@@ -1,0 +1,16 @@
+slack_webhook_url: "https://hooks.slack.com/services/REPLACE/WITH/YOUR_WEBHOOK"
+
+# Detection thresholds
+zscore_threshold: 3.0
+rate_multiplier: 5.0
+error_rate_multiplier: 3.0
+
+# Window sizes
+sliding_window_seconds: 60
+baseline_window_minutes: 30
+baseline_recalc_interval_seconds: 60
+
+# Infrastructure
+dashboard_port: 5000
+log_file_path: "/var/log/nginx/hng-access.log"
+audit_log_path: "/var/log/detector/audit.log"
