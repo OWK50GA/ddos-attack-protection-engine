@@ -215,6 +215,13 @@ class SharedState:
     ban_history: Dict[str, int] = field(default_factory=dict)
     ban_lock: threading.Lock = field(default_factory=threading.Lock)
 
+    # --- Baseline history (for dashboard graph) ---
+    # Each entry: {"timestamp": ISO8601 str, "mean": float, "stddev": float, "hour": int}
+    # Capped at 500 entries (~8+ hours at 60s recalc interval)
+    baseline_history: deque = field(
+        default_factory=lambda: deque(maxlen=500)
+    )
+
     # --- Diagnostics ---
     parse_error_count: int = 0
     daemon_start_time: datetime = field(
