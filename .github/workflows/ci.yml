@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Run test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('detector/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install -r detector/requirements.txt
+
+      - name: Run unit and integration tests
+        run: python -m pytest detector/tests/ -v --tb=short
+        env:
+          # Provide a dummy webhook URL so config validation passes in tests
+          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/TEST/TEST/TEST"
+
+      - name: Validate docker-compose.yml structure
+        run: |
+          pip install pyyaml
+          python -c "
+          import yaml
+          with open('docker-compose.yml') as f:
+              c = yaml.safe_load(f)
+          services = set(c.get('services', {}).keys())
+          assert 'nginx' in services, 'nginx service missing'
+          assert 'nextcloud' in services, 'nextcloud service missing'
+          assert 'detector' in services, 'detector service missing'
+          assert 'NET_ADMIN' in c['services']['detector'].get('cap_add', [])
+          print('docker-compose.yml structure OK')
+          "
+
+      - name: Validate nginx.conf exists and has required fields
+        run: |
+          python -c "
+          with open('nginx/nginx.conf') as f:
+              conf = f.read()
+          required = ['json_combined', 'source_ip', 'timestamp', 'method',
+                      'path', 'status', 'response_size', 'X-Forwarded-For',
+                      'hng-access.log']
+          for field in required:
+              assert field in conf, f'Missing field in nginx.conf: {field}'
+          print('nginx.conf validation OK')
+          "
