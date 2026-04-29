@@ -113,14 +113,89 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     <tbody id="top-ips-tbody"><tr><td colspan="2" style="color:#475569">No data yet</td></tr></tbody>
   </table>
 
+  <div class="section-title">📈 Baseline Mean Over Time</div>
+  <div style="background:#1e2130;border-radius:10px;padding:18px;margin-bottom:24px;">
+    <canvas id="baseline-chart" height="80"></canvas>
+  </div>
+
   <div id="status">Refreshing every 3 seconds…</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
     function fmt(n, decimals=1) { return (n ?? 0).toFixed(decimals); }
     function fmtUptime(s) {
       s = Math.floor(s || 0);
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
       return `${h}h ${m}m ${sec}s`;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Baseline chart (Chart.js)
+    // ---------------------------------------------------------------------------
+    const ctx = document.getElementById('baseline-chart').getContext('2d');
+    const baselineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Effective Mean (req/s)',
+            data: [],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.1)',
+            tension: 0.3,
+            pointRadius: 2,
+            fill: true,
+          },
+          {
+            label: 'Stddev',
+            data: [],
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.05)',
+            tension: 0.3,
+            pointRadius: 2,
+            borderDash: [4, 4],
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        scales: {
+          x: {
+            ticks: { color: '#64748b', maxTicksLimit: 12, maxRotation: 0 },
+            grid: { color: '#2d3148' }
+          },
+          y: {
+            ticks: { color: '#64748b' },
+            grid: { color: '#2d3148' },
+            beginAtZero: true,
+          }
+        },
+        plugins: {
+          legend: { labels: { color: '#cbd5e1' } },
+          tooltip: { mode: 'index', intersect: false }
+        }
+      }
+    });
+
+    async function refreshBaseline() {
+      try {
+        const r = await fetch('/api/baseline-history');
+        const d = await r.json();
+        const history = d.history || [];
+        // Show last 120 points (2 hours at 60s interval)
+        const slice = history.slice(-120);
+        baselineChart.data.labels = slice.map(e => {
+          // Show HH:MM from ISO timestamp
+          const t = e.timestamp || '';
+          return t.length >= 16 ? t.substring(11, 16) : t;
+        });
+        baselineChart.data.datasets[0].data = slice.map(e => e.mean);
+        baselineChart.data.datasets[1].data = slice.map(e => e.stddev);
+        baselineChart.update('none');
+      } catch(e) {}
     }
 
     async function refresh() {
@@ -172,7 +247,9 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     refresh();
+    refreshBaseline();
     setInterval(refresh, 3000);
+    setInterval(refreshBaseline, 60000);  // chart updates every 60s (matches recalc interval)
   </script>
 </body>
 </html>"""
@@ -195,6 +272,16 @@ def create_app(shared: SharedState) -> Flask:
     @app.route("/")
     def index():
         return render_template_string(_HTML_TEMPLATE)
+
+    @app.route("/api/baseline-history")
+    def baseline_history():
+        """Return the last N baseline recalculation snapshots for the graph."""
+        try:
+            s: SharedState = app.config["shared"]
+            history = list(s.baseline_history)
+            return jsonify(history=history)
+        except Exception as exc:
+            return jsonify(history=[], error=str(exc))
 
     @app.route("/api/metrics")
     def metrics():

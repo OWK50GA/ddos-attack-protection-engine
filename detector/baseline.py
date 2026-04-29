@@ -90,6 +90,14 @@ class BaselineCalculator:
         with self._shared.baseline_lock:
             self._shared.baseline_state = new_state
 
+        # 7b. Append to baseline history for the dashboard graph
+        self._shared.baseline_history.append({
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "mean": round(mean, 4),
+            "stddev": round(stddev, 4),
+            "hour": now.hour,
+        })
+
         # 8. Write audit entry
         if self._shared.audit_log:
             self._shared.audit_log.baseline_recalc(mean, stddev)
