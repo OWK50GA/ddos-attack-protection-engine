@@ -145,35 +145,40 @@ class Unbanner:
 
     def _remove_iptables_rule(self, ip: str) -> bool:
         """
-        Execute `iptables -D INPUT -s <ip> -j DROP` to remove the rule.
+        Remove iptables rules for *ip* from both DOCKER-USER and INPUT chains.
 
-        Returns True on success, False on failure.
-        Logs the error but never raises.
+        Returns True if all removals succeeded, False if any failed.
+        Logs errors but never raises.
         """
-        cmd = ["iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"]
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                msg = (
-                    f"iptables -D failed for {ip}: "
-                    f"rc={result.returncode} stderr={result.stderr.strip()!r}"
+        cmds = [
+            ["iptables", "-D", "DOCKER-USER", "-s", ip, "-j", "DROP"],
+            ["iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"],
+        ]
+        success = True
+        for cmd in cmds:
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
+                if result.returncode != 0:
+                    msg = (
+                        f"iptables -D failed for {ip} ({' '.join(cmd)}): "
+                        f"rc={result.returncode} stderr={result.stderr.strip()!r}"
+                    )
+                    if self._shared.audit_log:
+                        self._shared.audit_log.error("unbanner", msg)
+                    success = False
+            except FileNotFoundError:
                 if self._shared.audit_log:
-                    self._shared.audit_log.error("unbanner", msg)
+                    self._shared.audit_log.error(
+                        "unbanner", f"iptables not found — cannot unban {ip}"
+                    )
                 return False
-            return True
-        except FileNotFoundError:
-            if self._shared.audit_log:
-                self._shared.audit_log.error(
-                    "unbanner", f"iptables not found — cannot unban {ip}"
-                )
-            return False
-        except Exception as exc:  # pragma: no cover
-            if self._shared.audit_log:
-                self._shared.audit_log.error("unbanner", f"iptables exception: {exc}")
-            return False
+            except Exception as exc:  # pragma: no cover
+                if self._shared.audit_log:
+                    self._shared.audit_log.error("unbanner", f"iptables exception: {exc}")
+                return False
+        return success

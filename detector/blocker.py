@@ -134,39 +134,46 @@ class Blocker:
 
     def _run_iptables(self, ip: str) -> bool:
         """
-        Execute `iptables -A INPUT -s <ip> -j DROP`.
+        Execute iptables rules to block *ip* at both the host INPUT chain
+        and the DOCKER-USER chain (which intercepts traffic before Docker NAT).
 
         Returns True on success, False on failure.
         Logs the error but never raises.
         """
-        cmd = ["iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                msg = (
-                    f"iptables failed for {ip}: "
-                    f"rc={result.returncode} stderr={result.stderr.strip()!r}"
+        # DOCKER-USER chain: blocks traffic before Docker's NAT rewrites source IPs
+        # INPUT chain: blocks direct host traffic
+        cmds = [
+            ["iptables", "-I", "DOCKER-USER", "-s", ip, "-j", "DROP"],
+            ["iptables", "-I", "INPUT", "-s", ip, "-j", "DROP"],
+        ]
+        success = True
+        for cmd in cmds:
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
+                if result.returncode != 0:
+                    msg = (
+                        f"iptables failed for {ip} ({' '.join(cmd)}): "
+                        f"rc={result.returncode} stderr={result.stderr.strip()!r}"
+                    )
+                    if self._shared.audit_log:
+                        self._shared.audit_log.error("blocker", msg)
+                    success = False
+            except FileNotFoundError:
                 if self._shared.audit_log:
-                    self._shared.audit_log.error("blocker", msg)
+                    self._shared.audit_log.error(
+                        "blocker", f"iptables not found — cannot block {ip}"
+                    )
                 return False
-            return True
-        except FileNotFoundError:
-            # iptables not available (e.g. in test environment)
-            if self._shared.audit_log:
-                self._shared.audit_log.error(
-                    "blocker", f"iptables not found — cannot block {ip}"
-                )
-            return False
-        except Exception as exc:  # pragma: no cover
-            if self._shared.audit_log:
-                self._shared.audit_log.error("blocker", f"iptables exception: {exc}")
-            return False
+            except Exception as exc:  # pragma: no cover
+                if self._shared.audit_log:
+                    self._shared.audit_log.error("blocker", f"iptables exception: {exc}")
+                return False
+        return success
 
     def _current_backoff_level(self, ip: str) -> int:
         """

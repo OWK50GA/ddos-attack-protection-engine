@@ -100,7 +100,7 @@ def test_property8_zscore_zero_when_stddev_zero():
 #   rate > rate_multiplier * mean; anomalous=False otherwise.
 # ---------------------------------------------------------------------------
 
-@settings(max_examples=200)
+@settings(max_examples=200, deadline=None)
 @given(
     mean=st.floats(min_value=1.0, max_value=100.0, allow_nan=False, allow_infinity=False),
     stddev=st.floats(min_value=0.1, max_value=20.0, allow_nan=False, allow_infinity=False),

@@ -79,9 +79,9 @@ def test_property11_ban_is_idempotent(ip, condition, rate):
         blocker.ban(ip, condition, rate)
         blocker.ban(ip, condition, rate)  # second call — should be no-op
 
-    # Exactly one iptables call
-    assert mock_run.call_count == 1, (
-        f"Expected 1 iptables call, got {mock_run.call_count}"
+    # Exactly 2 iptables calls (DOCKER-USER + INPUT)
+    assert mock_run.call_count == 2, (
+        f"Expected 2 iptables calls, got {mock_run.call_count}"
     )
 
     # Exactly one registry entry
@@ -175,12 +175,10 @@ class TestRunIptables:
             mock_run.return_value = MagicMock(returncode=0, stderr="")
             blocker._run_iptables("1.2.3.4")
 
-        mock_run.assert_called_once_with(
-            ["iptables", "-A", "INPUT", "-s", "1.2.3.4", "-j", "DROP"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        assert mock_run.call_count == 2
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        assert ["iptables", "-I", "DOCKER-USER", "-s", "1.2.3.4", "-j", "DROP"] in calls
+        assert ["iptables", "-I", "INPUT", "-s", "1.2.3.4", "-j", "DROP"] in calls
 
     def test_returns_true_on_success(self):
         blocker, _, _ = _make_blocker()

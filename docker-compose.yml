@@ -45,7 +45,6 @@ services:
       context: .
       dockerfile: detector/Dockerfile
     restart: unless-stopped
-    network_mode: host
     volumes:
       - HNG-nginx-logs:/var/log/nginx:ro   # reads nginx logs, read-only
       - ./config.yaml:/app/config.yaml:ro  # config bind-mount, read-only
