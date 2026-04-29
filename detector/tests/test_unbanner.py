@@ -122,11 +122,12 @@ def test_property13_unban_correctness(ip, backoff_level):
         with _mock_iptables_success(unbanner) as mock_run:
             unbanner.unban(ip)
 
-        # (a) iptables -D was called
-        assert mock_run.call_count == 1
-        cmd_used = mock_run.call_args[0][0]
-        assert "-D" in cmd_used
-        assert ip in cmd_used
+        # (a) iptables -D was called twice (DOCKER-USER + INPUT)
+        assert mock_run.call_count == 2
+        cmds = [c[0][0] for c in mock_run.call_args_list]
+        assert any("-D" in cmd and "DOCKER-USER" in cmd for cmd in cmds)
+        assert any("-D" in cmd and "INPUT" in cmd for cmd in cmds)
+        assert all(ip in cmd for cmd in cmds)
 
         # (b) backoff level incremented in ban_history
         with shared.ban_lock:
@@ -204,12 +205,10 @@ class TestRemoveIptablesRule:
             mock_run.return_value = MagicMock(returncode=0, stderr="")
             unbanner._remove_iptables_rule("1.2.3.4")
 
-        mock_run.assert_called_once_with(
-            ["iptables", "-D", "INPUT", "-s", "1.2.3.4", "-j", "DROP"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        assert mock_run.call_count == 2
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        assert ["iptables", "-D", "DOCKER-USER", "-s", "1.2.3.4", "-j", "DROP"] in calls
+        assert ["iptables", "-D", "INPUT", "-s", "1.2.3.4", "-j", "DROP"] in calls
 
     def test_returns_true_on_success(self):
         unbanner, _, _ = _make_unbanner()

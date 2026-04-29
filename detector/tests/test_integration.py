@@ -272,7 +272,8 @@ class TestBanTrigger:
                 blocker.ban("10.0.0.1", "zscore", 50.0)
                 blocker.ban("10.0.0.1", "zscore", 60.0)  # duplicate
 
-        assert mock_run.call_count == 1
+        # First ban = 2 iptables calls (DOCKER-USER + INPUT); second ban is skipped
+        assert mock_run.call_count == 2
         assert len(shared.ban_registry) == 1
 
 
