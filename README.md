@@ -418,4 +418,4 @@ python -m pytest detector/tests/test_integration.py -v
 
 ## Blog Post
 
-> Link: `https://YOUR_BLOG_URL`
+> Link: `[Blog](https://dev.to/wilfridk/how-i-created-a-ddos-protection-engine-3kfg)`
