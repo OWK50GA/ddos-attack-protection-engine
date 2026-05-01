@@ -6,8 +6,6 @@ A real-time security watchdog for a Nextcloud cloud storage platform. It tails N
 
 ## Server Details
 
-> **Fill these in before submission**
-
 - **Server IP:** `13.51.64.165`
 - **Dashboard URL:** `http://13.51.64.165/5000`
 - **GitHub Repo:** `https://github.com/OWK50GA/ddos-attack-protection-engine`
