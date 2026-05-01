@@ -8,10 +8,10 @@ A real-time security watchdog for a Nextcloud cloud storage platform. It tails N
 
 > **Fill these in before submission**
 
-- **Server IP:** `YOUR_SERVER_IP`
-- **Dashboard URL:** `http://monitor.yourdomain.com:5000`
-- **GitHub Repo:** `https://github.com/YOUR_USERNAME/YOUR_REPO`
-- **Blog Post:** `https://YOUR_BLOG_URL`
+- **Server IP:** `13.51.64.165`
+- **Dashboard URL:** `http://13.51.64.165/5000`
+- **GitHub Repo:** `https://github.com/OWK50GA/ddos-attack-protection-engine`
+- **Blog Post:** `https://dev.to/wilfridk/how-i-created-a-ddos-protection-engine-3kfg`
 
 ---
 
